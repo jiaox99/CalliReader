@@ -74,6 +74,7 @@ def main():
     parser.add_argument('--drop_zero', type=bool, default=False,help='Decide the deletion of zero padding in pseudo tokens')
     parser.add_argument('--verbose', type=bool, default=False,help='Decide the output of extra information')
     parser.add_argument('--repetition_penalty', type=float, default=1.0,help='Repetition penalty for generation')
+    parser.add_argument('--load_4bit', action='store_true', help='Load the LLM in 4-bit (bitsandbytes) for low-VRAM GPUs')
     
 
     args = parser.parse_args()
@@ -82,11 +83,29 @@ def main():
         raise ValueError(f"The target should a string, not a instance of {type(args.tgt)}!")
 
     
-    model = AutoModel.from_pretrained(
-            INTERNVL_PATH,
-            torch_dtype=torch.bfloat16,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True).eval().cuda()
+    if args.load_4bit:
+        from transformers import AutoConfig, BitsAndBytesConfig
+        config = AutoConfig.from_pretrained(INTERNVL_PATH, trust_remote_code=True)
+        config.vision_config.use_flash_attn = False
+        config.llm_config.attn_implementation = 'eager'
+        model = AutoModel.from_pretrained(
+                INTERNVL_PATH,
+                torch_dtype=torch.bfloat16,
+                quantization_config=BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_quant_type='nf4',
+                    llm_int8_skip_modules=['vision_model', 'mlp1', 'resampler', 'sorter', 'output', 'tok_embeddings']),
+                device_map={'': 0},
+                low_cpu_mem_usage=True,
+                config=config,
+                trust_remote_code=True).eval()
+    else:
+        model = AutoModel.from_pretrained(
+                INTERNVL_PATH,
+                torch_dtype=torch.bfloat16,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True).eval().cuda()
     tokenizer = AutoTokenizer.from_pretrained(INTERNVL_PATH, trust_remote_code=True)
 
     generation_config = dict(

@@ -1,0 +1,5 @@
+params/
+InternVL/*.safetensors
+results/
+*.pyc
+.history/

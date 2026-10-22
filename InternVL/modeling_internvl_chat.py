@@ -98,7 +98,7 @@ def most_frequent_rgb(image_array):
 def most_frequent_rgb_fast(image_array):
     """快速查找图片中最频繁的RGB值，不返回频率"""
     # 将RGB每个通道的值映射为一个唯一的整数，形如 R * 256^2 + G * 256 + B
-    flattened = image_array.reshape(-1, 3)
+    flattened = image_array.reshape(-1, 3).astype(np.int64)
     rgb_ints = flattened[:, 0] * 256**2 + flattened[:, 1] * 256 + flattened[:, 2]
 
     # 使用np.bincount统计每个唯一RGB组合出现的次数
